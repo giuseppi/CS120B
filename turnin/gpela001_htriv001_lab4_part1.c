@@ -69,19 +69,23 @@ void part1_SM() {
   }
 
   switch(state) { //State Actions
+    case start:
+      break;
     case 01_press:
-      B0 = 1;
-      B1 = 0;
+      B0 = 0x01;
+      B1 = 0x00;
       break;
     case 01_release:
       break;
     case 10_press:
-      B0 = 0;
-      B1 = 1;
+      B0 = 0x00;
+      B1 = 0x01;
       break;
     case 10_release:
       break;
     default:
+      B0 = 0x01;
+      B1 = 0x00;
       break;
   }
 }
