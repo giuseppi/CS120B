@@ -26,26 +26,48 @@
 echo ======================================================\n
 echo Running all tests..."\n\n
 
-# Example test:
-test "PINA: 0x00, PINB: 0x00 => PORTC: 0"
-# Set inputs
-setPINA 0x00
-setPINB 0x00
-# Continue for several ticks
+# Add tests below
+
+test "Start -> p_01"
+set state = start
+setPINA 0x01
 continue 2
-# Set expect values
-expectPORTC 0
-# Check pass/fail
+expectPORTB 0x01
+checkResult
+expect state 1
 checkResult
 
-# Add tests below
-test “cntA0 > 100 => PORTB: 0x0F”
-set exampleTick::cntA0 = 101
-set state = pressA1
-setPINA 0x02
+test "Start -> p_01 -> r_01"
+set state = start
+setPINA 0x00
 continue 2
-expectPORTB 0x0F
-expect state pressA1
+expectPORTB 0x01
+checkResult
+expect state 2
+checkResult
+
+test "Start -> p_01 -> r_01 -> p_10"
+set state = start
+setPINA 0x00
+continue 2
+setPINA 0x01
+continue 2
+expectPORTB 0x10
+checkResult
+expect state 3
+checkResult
+
+test "Start -> p_01 -> r_01 -> p_10 -> r_10"
+set state = start
+setPINA 0x00
+continue 2
+setPINA 0x01
+continue 2
+setPINA 0x00
+continue 2
+expectPORTB 0x10
+checkResult
+expect state 4
 checkResult
 
 # Report on how many tests passed/tests ran

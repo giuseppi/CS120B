@@ -10,57 +10,57 @@
 #include <avr/io.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
-#include <RIMS.h>
 #endif
 
-enum part1_states{start, 01_press, 01_release, 10_press, 10_release} state;
+enum part1_states{start, p_01, r_01, p_10, r_10} state;
 
 void part1_SM() {
+  unsigned char A0 = PINA; 
   switch(state) { //Transitions
     case start:
-      state = 01_press;
+      state = p_01;
       break;
-    case 01_press:
+    case p_01:
       if (A0) {
-        state = 01_press;
+        state = p_01;
       }
       else if (!A0) {
-        state = 01_release;
+        state = r_01;
       }
       else {
-	state = 01_press;
+	state = p_01;
       }
       break;
-    case 01_release:
+    case r_01:
       if (!A0) {
-        state = 01_release;
+        state = r_01;
       }
       else if (A0) {
-        state = 10_press;
+        state = p_10;
       }
       else {
-	state = 01_release;
+	state = r_01;
       }
       break;
-    case 10_press:
+    case p_10:
       if (A0) {
-	state = 10_press;
+	state = p_10;
       else if (!A0) {
-        state = 10_release;
+        state = r_10;
       }
       else {
-	state = 10_press;
+	state = p_10;
       }
       break;
-    case 10_release:
+    case r_10:
       if (!A0) {
-        state = 10_release;
+        state = r_10;
       }
       else if (A0) {
-        state = 01_press;
+        state = p_01;
       }
       else {
-        state = 10_release;
+        state = r_10;
       }
       break;
     default:
@@ -71,21 +71,18 @@ void part1_SM() {
   switch(state) { //State Actions
     case start:
       break;
-    case 01_press:
-      B0 = 0x01;
-      B1 = 0x00;
+    case p_01:
+      PORTB = 0x01;
       break;
-    case 01_release:
+    case r_01:
       break;
-    case 10_press:
-      B0 = 0x00;
-      B1 = 0x01;
+    case p_10:
+      PORTB = 0x10;
       break;
-    case 10_release:
+    case r_10:
       break;
     default:
-      B0 = 0x01;
-      B1 = 0x00;
+      PORTB = 0x01;
       break;
   }
 }
@@ -101,5 +98,5 @@ int main(void) {
 		part1_SM();		
 	}
 		
-    return 0;
+    return 1;
 }
