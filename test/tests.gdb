@@ -45,7 +45,7 @@ setPINA 0x01
 continue 2
 expectPORTC 0x08
 checkResult
-expect state 2
+expect state 4
 checkResult
 
 test "Subtract 1. Result: State = minus, PORTC = 0x06"
@@ -56,7 +56,7 @@ setPINA 0x10
 continue 2
 expectPORTC 0x06
 checkResult
-expect state 3
+expect state 2
 checkResult
 
 test "Press both. Result: State = reset, PORTC = 0x00"
@@ -67,7 +67,7 @@ setPINA 0x03
 continue 2
 expectPORTC 0x00
 checkResult
-expect state 1
+expect state 4
 checkResult
 
 # Report on how many tests passed/tests ran

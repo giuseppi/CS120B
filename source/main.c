@@ -6,31 +6,57 @@
 enum part2_states{start, init, plus, minus, reset} state;
 
 void part2_SM() {
-	unsigned char val;
+	unsigned static char val;
+	unsigned char A0 = PINA & 0x01;
+	unsigned char A1 = PINA;
 	switch(state) { // Transitions
 		case start:
 			state = init;
 			val = 0x07;
 			break;
 		case init:
-			if (PORTA == 0x03) {state = reset;}
-			else if (PORTA == 0x02) {state = minus;}
-			else if (PORTA == 0x01) {state = plus;}
-			else {state = init;}
+			if (A0 && A1) {
+				state = reset;
+			}
+			else if ((val >= 0) && (A1 && !A0)) {
+				state = minus;
+			}
+			else if ((val < 9) && (A0 && !A1)) {
+				state = plus;
+			}
+			else {
+				state = init;
+			}
 			break;
 		case minus:
-			if (PORTA == 0x00) {state = init;}
-			else if (PORTA == 0x03) {state = reset;}
-			else {state = minus;}
+			if (!A0 && !A1) {
+				state = init;
+			}
+			else if (A0 && A1) {
+				state = reset;
+			}
+			else {
+				state = minus;
+			}
 			break;
 		case plus:
-			if (PORTA == 0x00) {state = init;}
-			else if (PORTA == 0x03) {state = reset;}
-			else {state = plus;}
+			if (!A0 && !A1) {
+				state = init;
+			}
+			else if (A0 && A1) {
+				state = reset;
+			}
+			else {
+				state = plus;
+			}
 			break;
 		case reset:
-			if (PORTA == 0x03) {state = reset;}
-				else {state = init;}
+			if (A0 && A1) {
+				state = reset;
+			}
+			else {
+				state = init;
+			}
 			break;
 		default:
 			break;
@@ -40,10 +66,10 @@ void part2_SM() {
 		case init:
 			break;
 		case minus:
-			if (val > 0) {val--;}
+			val -= 0x01;
 			break;
 		case plus:
-			if (val < 9) {val++;}
+			val += 0x01;
 			break;
 		case reset:
 			val = 0x00;
