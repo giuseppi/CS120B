@@ -3,65 +3,68 @@
 #include "simAVRHeader.h"
 #endif
 
-	enum STATES { START, INIT, INCREMENT, RESET, DECREMENT } state;
-	unsigned char holder;
+enum part3_states{start, wait, push_1, r_1, open} state;
+static unsigned char val;
 
-void tick() {
+void part3_SM() {
 	switch(state) {
-		case START:
-			state = INIT;
-			holder = 7;
+		case start:
+			state = wait;
 			break;
-		case INIT:
-			if (PINA == 3) {
-				state = RESET;
-			} else if (PINA == 1) {
-				state = INCREMENT;
-			} else if (PINA == 2) {
-				state = DECREMENT;
-			} else {
-				state = INIT;
-			}
+		case wait:
+			if (PINA == 0x04) {state = push_1;}
+			else {state = wait;}
 			break;
-		case INCREMENT:
-			state = INIT;
+		case push_1:
+			if (PINA == 0x00) {state = r_1;}
+			else {state = push_1;}
 			break;
-		case RESET:
-			state = INIT;
+		case r_1:
+			if (PINA == 128) {state = wait;}
+			else if (PINA == 0x02) {state = open;}
+			else if (PINA == 0x00) {state = r_1;}
+			else {state = wait;}
 			break;
-		case DECREMENT:
-			state = INIT;
+		case open:
+			if (PINA == 128) {state = wait;}
+			else if (PINA = 0x00) {state = open;}
+			else {state = wait;}
 			break;
-	}
-
-	switch(state) {
-		case START:
+		default:
+			state = start;
 			break;
-		case INIT:
+		}
+	
+	switch (state) {
+		case start:
 			break;
-		case INCREMENT:
-			if (holder < 9) {
-			holder++;
-			}
+		case wait:
+			val = 0x00;
+			break;			
+		case open:
+			val = 0x01;
 			break;
-		case RESET:
-			holder = 0;
+		case r_1:
 			break;
-		case DECREMENT:
-			if (holder > 0) {
-			holder--;
-			}
+		case push_1:
+			break;
+		default:
+			val = 0x00;
 			break;
 	}
 }
 
 int main(void) {
-DDRA = 0x00; DDRC = 0xFF; PORTA = 0xFF; PORTC = 0x00;
-state = START;
-holder = 7;
-    while (1) {
-	tick();
-	PORTC = holder;
-    }
-    return 1;
+	DDRA = 0x00;
+	PORTA = 0xFF;
+	DDRB = 0xFF;
+	PORTB = 0x00;
+	PORTC = 0x00;
+	state = start;
+    
+	while (1) {
+		part3_SM();
+		PORTB = val;
+	}
+	return 0;
 }

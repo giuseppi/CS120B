@@ -1,7 +1,10 @@
-Breakpoint 1 at 0x1f2: file source/main.c, line 62.
+Breakpoint 1 at 0x22c: file source/main.c, line 65.
 Note: automatically using hardware breakpoints for read-only addresses.
 ======================================================
 Running all tests..."
 
-"Press nothing. Result: State = wait, PORTC = 0x07"..."Add 1. Result: State = plus, PORTC = 0x08"..."Subtract 1. Result: State = minus, PORTC = 0x06"..."Press both. Result: State = reset, PORTC = 0x00"...======================================================
+"Open. Press # and Y"...
+	Expected 0x01 
+	PORTB '0x800025:	0x00
+"Lock. Press A7"..."Wrong combination. Press Y and #"...======================================================
 Quitting: Remote doesn't know how to detach

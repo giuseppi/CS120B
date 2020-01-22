@@ -28,38 +28,41 @@ echo Running all tests..."\n\n
 
 # Add tests below
 
-test "Press nothing. Result: State = wait, PORTC = 0x07"
-set state = START
+test "Open. Press # and Y"
+set state = start
 setPINA 0x00
 continue 2
-expectPORTC 0x07
-checkResult
-
-test "Add 1. Result: State = plus, PORTC = 0x08"
-set state = START
-setPINA 0x00
+setPINA 0x04
 continue 2
-setPINA 0x01
-continue 2
-expectPORTC 0x08
-checkResult
-
-test "Subtract 1. Result: State = minus, PORTC = 0x06"
-set state = START
 setPINA 0x00
 continue 2
 setPINA 0x02
 continue 2
-expectPORTC 0x06
+expectPORTB 0x01
 checkResult
 
-test "Press both. Result: State = reset, PORTC = 0x00"
-set state = START
+test "Lock. Press A7"
+set state = start
+setPINA 0x04
+continue 2
 setPINA 0x00
 continue 2
-setPINA 0x03
+setPINA 0x128
 continue 2
-expectPORTC 0x00
+expectPORTB 0x00
+checkResult
+
+test "Wrong combination. Press Y and #"
+set state = start
+setPINA 0x00
+continue 2
+setPINA 0x02
+continue 2
+setPINA 0x00
+continue 2
+setPINA 0x04
+continue 2
+expectPORTB 0x00
 checkResult
 
 # Report on how many tests passed/tests ran
