@@ -1,55 +1,66 @@
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #endif
 
-enum part3_states{start, wait, push_1, r_1, open} state;
-static unsigned char val;
+volatile unsigned char TimerFlag = 0;
 
-void part3_SM() {
-	switch(state) {
+unsigned long _avr_timer_M = 1;
+unsigned long _avr_timer_cntcurr = 0;
+
+void TimerOn() {
+	TCCR1B = 0x0B;
+	OCR1A = 125;
+	TIMSK1 = 0x02;
+	TCNT1 = 0;
+
+	_avr_timer_cntcurr = _avr_timer_M;
+
+	SREG |= 0x80;
+}
+
+void TimerOff() {
+	TCCR1B = 0x00;
+}
+
+void TimerISR() {
+	TimerFlag = 1;
+}
+
+ISR(TIMER1_COMPA_vect) {
+	_avr_timer_cntcurr--;
+	if(_avr_timer_cntcurr == 0) {
+		TimerISR();
+		_avr_timer_cntcurr = _avr_timer_M;
+	}
+}
+
+void TimerSet(unsigned long M) {
+	_avr_timer_M = M;
+	_avr_timer_cntcurr = _avr_timer_M;
+}
+
+enum States{start, init, NextLed} state;
+
+void tick() {
+	switch(state) { // Transitions
 		case start:
-			state = wait;
-			break;
-		case wait:
-			if (PINA == 0x04) {state = push_1;}
-			else {state = wait;}
-			break;
-		case push_1:
-			if (PINA == 0x00) {state = r_1;}
-			else {state = push_1;}
-			break;
-		case r_1:
-			if (PINA == 128) {state = wait;}
-			else if (PINA == 0x02) {state = open;}
-			else if (PINA == 0x00) {state = r_1;}
-			else {state = wait;}
-			break;
-		case open:
-			if (PINA == 128) {state = wait;}
-			else if (PINA = 0x00) {state = open;}
-			else {state = wait;}
-			break;
-		default:
-			state = start;
-			break;
-		}
-	
-	switch (state) {
+			state = init;
+		case init:
+			state = NextLed;
+		case NextLed:
+			state = NextLed;
+	}
+	switch(state) { // State Actions
 		case start:
 			break;
-		case wait:
-			val = 0x00;
-			break;			
-		case open:
-			val = 0x01;
-			break;
-		case r_1:
-			break;
-		case push_1:
-			break;
+		case init:
+			PORTB = 0x01;
+		case NextLed:
+			if (PORTB == 0x80) {PORTB = 0x01;}
+			else {PORTB = PORTB << 1;}
 		default:
-			val = 0x00;
 			break;
 	}
 }
@@ -59,12 +70,17 @@ int main(void) {
 	PORTA = 0xFF;
 	DDRB = 0xFF;
 	PORTB = 0x00;
-	PORTC = 0x00;
-	state = start;
+	
+	TimerSet(1000);
+	TimerOn();
+	unsigned char tmpB = 0x00;
     
 	while (1) {
-		part3_SM();
-		PORTB = val;
+		tick();
+		tmpB = ~tmpB;
+		PORTB = tmpB;
+		while (!TimerFlag);
+		TimerFlag = 0;
 	}
 	return 0;
 }
