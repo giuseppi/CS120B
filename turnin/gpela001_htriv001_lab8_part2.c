@@ -20,13 +20,7 @@ int main(void) {
 		adcVal = ADC;
 		bval = (char)adcVal;
 		dval = (char)(adcVal >> 4);
-		if (adcVal >= 0xFF / 2) {
-			PORTB = bval;
-			PORTD = dval;
-		}
-		else {
-			PORTB = 0;
-			PORTD = 0;		
-		}
+		PORTB = bval;
+		PORTD = dval;
 	}
 }
