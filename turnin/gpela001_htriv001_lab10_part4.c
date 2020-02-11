@@ -4,7 +4,11 @@
 enum Three_States{T_Start, B0, B1, B2} three_state;
 enum Blink_States{B_Start, off, B3} blink_state;
 enum Speaker_States{S_Start, Quiet, Noise}speak_state;
+enum FChange_States{F_Start, Wait, Up, Down, Rest}change_state;
 enum Output{Start, write} out_state;
+	
+double frequencies[] = {246.94, 261.63, 293.66, 329.63, 349.23, 392, 440, 493.88};
+unsigned char freq_at = 2;
 	
 unsigned char tmp_three = 0x00;
 unsigned char tmp_blink = 0x00;
@@ -66,13 +70,11 @@ void set_PWM(double frequency) {
 		current_frequency = frequency;
 	}
 }
-
 void PWM_on() {
 	TCCR3A = (1 << COM3A0);
 	TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);
 	set_PWM(0);
 }
-
 void PWM_off() {
 	TCCR3A = 0x00;
 	TCCR3B = 0x00;
@@ -114,16 +116,54 @@ void speaker_Tick() {
 	switch (speak_state) {
 		case Start: speak_state = Quiet; break;
 		case Quiet: speak_state = (tmp_A == 0x04) ? Noise : Quiet; break;
-		case Noise: speak_state = Quiet; break;
+		case Noise: speak_state = (tmp_A == 0x04) ? Noise : Quiet; break;
 		default: break;
 	}
 	switch (speak_state) {
 		case Start: break;
 		case Quiet: set_PWM(0); break;
-		case Noise: set_PWM(261.62); break;
+		case Noise: set_PWM(frequencies[freq_at]); break;
 		default: break;
 	}
 	
+}
+
+void fChange_Tick() {
+	switch (change_state) {
+		case F_Start: change_state = Wait; break;
+		case Wait: 
+			if (tmp_A == 0x01) {
+				change_state = Down;
+			}
+			else if (tmp_A == 0x02) {
+				change_state = Up;
+			}
+			break;
+		case Down: change_state = Rest; break;
+		case Up: change_state = Rest; break;
+		case Rest:
+			if (tmp_A == 0x00) {
+				change_state = Wait;
+			}
+			break;
+		default: break;
+	}
+	switch (change_state) {
+		case F_Start: break;
+		case Wait: break;
+		case Up:
+			if (freq_at < 7) {
+				freq_at++;
+			}
+			break;
+		case Down:
+			if (freq_at > 0) {
+				freq_at--;
+			}
+			break;
+		case Rest: break;
+		default: break;
+	}
 }
 
 void output_Tick() {
@@ -135,7 +175,7 @@ void output_Tick() {
 	switch (out_state) {
 		case Start: break;
 		case write: 
-			PORTB = tmp_blink | tmp_three; 
+			PORTB = tmp_blink | tmp_three | 0x08; 
 			break;
 		default: break;
 	}
@@ -144,10 +184,11 @@ void output_Tick() {
 int main(void)
 {
 	DDRA = 0x00; PORTA = 0xFF;
-	DDRB = 0xFF; PORTB = 0x00;
+	DDRB = 0xFF; PORTB = 0x08;
 	unsigned long TL_elapsedTime = 0;
 	unsigned long BL_elapsedTime = 0;
 	unsigned long S_elapsedTime = 0;
+	unsigned long F_elapsedTime = 0;
 	const unsigned long timerPeriod = 2;
 	PWM_on();
     TimerSet(timerPeriod);
@@ -155,9 +196,10 @@ int main(void)
 	three_state = T_Start;
 	blink_state = B_Start;
 	speak_state = S_Start;
+	change_state = F_Start;
     while (1) 
     {
-		tmp_A = ~PINA & 0x04;
+		tmp_A = ~PINA & 0x07;
 		if (TL_elapsedTime >= 300) {
 			threeLED_Tick();
 			TL_elapsedTime = 0;
@@ -165,6 +207,10 @@ int main(void)
 		if (BL_elapsedTime >= 1000) {
 			blinkLED_Tick();
 			BL_elapsedTime = 0;
+		}
+		if (F_elapsedTime >= 2) {
+			fChange_Tick();
+			F_elapsedTime = 0;
 		}
 		if (S_elapsedTime >= 2) {
 			speaker_Tick();
@@ -178,5 +224,7 @@ int main(void)
 		BL_elapsedTime += timerPeriod;
 		TL_elapsedTime += timerPeriod;
 		S_elapsedTime += timerPeriod;
+		F_elapsedTime += timerPeriod;
     }
 }
+
