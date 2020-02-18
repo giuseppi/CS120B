@@ -1,182 +1,208 @@
 #include <avr/io.h>
-#include <avr/interrupt.h>	
+#include <avr/interrupt.h>
+#include "timer.h"
+#include "keypad.h"
+#include <stdio.h>
 
-enum Three_States{T_Start, B0, B1, B2} three_state;
-enum Blink_States{B_Start, off, B3} blink_state;
-enum Speaker_States{S_Start, Quiet, Noise}speak_state;
-enum Output{Start, write} out_state;
+/*
+unsigned char GetKeypadKey() {
+	/* // Returns '\0' if no key pressed, else returns char '1', '2', ... '9', 'A', ...
+	// If multiple keys pressed, returns leftmost-topmost one
+	// Keypad must be connected to port C
+	  Keypad arrangement
+			PC4 PC5 PC6 PC7
+	   col  1   2   3   4
+	row
+	PC0 1   1 | 2 | 3 | A
+	PC1 2   4 | 5 | 6 | B
+	PC2 3   7 | 8 | 9 | C
+	PC3 4   * | 0 | # | D
 	
-unsigned char tmp_three = 0x00;
-unsigned char tmp_blink = 0x00;
-unsigned char tmp_A = 0x00;
 	
-volatile unsigned char TimerFlag = 0;
-unsigned long _avr_timer_M = 1;
-unsigned long _avr_timer_cntcurr = 0;
-
-void TimerOn() {
-	TCCR1B = 0x0B;
-	OCR1A = 125;
-	TIMSK1 = 0x02;
-	TCNT1=0;
-	_avr_timer_cntcurr = _avr_timer_M;
-	SREG |= 0x80;
-}
-
-void TimerOff() {
-	TCCR1B = 0x00;
-}
-
-void TimerISR() {
-	TimerFlag = 1;
-}
-
-ISR(TIMER1_COMPA_vect) {
-	_avr_timer_cntcurr--;
-	if (_avr_timer_cntcurr == 0) {
-		TimerISR();
-		_avr_timer_cntcurr = _avr_timer_M;
-	}
+	PORTC = 0xEF; // Enable col 4 with 0, disable others with 1’s
+	asm("nop"); // add a delay to allow PORTC to stabilize before checking
 	
+	if (GetBit(PINC,0)==0) { return('1'); }
+	if (GetBit(PINC,1)==0) { return('4'); }
+	if (GetBit(PINC,2)==0) { return('7'); }
+	if (GetBit(PINC,3)==0) { return('*'); }
+
+	// Check keys in col 2
+	PORTC = 0xDF; // Enable col 5 with 0, disable others with 1’s
+	asm("nop"); // add a delay to allow PORTC to stabilize before checking
+	if (GetBit(PINC,0)==0) { return('2'); }
+	if (GetBit(PINC,1)==0) { return('5'); }
+	if (GetBit(PINC,2)==0) { return('8'); }
+	if (GetBit(PINC,3)==0) { return('0'); }
+
+	// Check keys in col 3
+	PORTC = 0xBF; // Enable col 6 with 0, disable others with 1’s
+	asm("nop"); // add a delay to allow PORTC to stabilize before checking
+	if (GetBit(PINC,0)==0) { return('3'); }
+	if (GetBit(PINC,1)==0) { return('6'); }
+	if (GetBit(PINC,2)==0) { return('9'); }
+	if (GetBit(PINC,3)==0) { return('#'); }
+
+	// Check keys in col 4	
+	PORTC = 0x7F; // Enable col 7 with 0, disable others with 1’s
+	asm("nop"); // add a delay to allow PORTC to stabilize before checking
+	if (GetBit(PINC,0)==0) { return('A'); }
+	if (GetBit(PINC,1)==0) { return('B'); }
+	if (GetBit(PINC,2)==0) { return('C'); }
+	if (GetBit(PINC,3)==0) { return('D'); }
+
+	return('\0'); // default value
+	
+
 }
-
-void TimerSet(unsigned long M) {
-	_avr_timer_M = M;
-	_avr_timer_cntcurr = _avr_timer_M;
-}
-
-void set_PWM(double frequency) {
-
-	static double current_frequency;
-
-	if (frequency != current_frequency) {
-		if (!frequency) { TCCR3B &= 0x08; }
-		else { TCCR3B |= 0x03; }
-		if (frequency < 0.954)
-      {
-         OCR3A = 0xFFFF;
-      }
-		else if (frequency > 31250) {
-          OCR3A = 0x0000;
-       }
-		else {
-         OCR3A = (short)(8000000 / (128 * frequency)) - 1;
-       }
-		TCNT3 = 0;
-		current_frequency = frequency;
+*/
+unsigned long int findGCD(unsigned long int a, unsigned long int b) { 
+	//--------Find GCD function --------------------------------------------------
+	unsigned long int c;
+	while(1){
+		c = a%b;
+		if(c==0){return b;}
+		a = b;
+		b = c;
 	}
-}
-
-void PWM_on() {
-	TCCR3A = (1 << COM3A0);
-	TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);
-	set_PWM(0);
-}
-
-void PWM_off() {
-	TCCR3A = 0x00;
-	TCCR3B = 0x00;
-}
- 
-void threeLED_Tick() {
-	switch (three_state) {
-		case T_Start: three_state = B0; break;
-		case B0: three_state = B1; break;
-		case B1: three_state = B2; break;
-		case B2: three_state = B0; break;
-		default: break;
-	}
-	switch (three_state) {
-		case T_Start: break;
-		case B0: tmp_three = 0x01; break;
-		case B1: tmp_three = 0x02; break;
-		case B2: tmp_three = 0x04; break;
-		default: break;
-	}
-}
-
-void blinkLED_Tick() {
-	switch (blink_state) {
-		case B_Start: blink_state = B3; break;
-		case off: blink_state = B3; break;
-		case B3: blink_state = off; break;
-		default: break;
-	}
-	switch (blink_state) {
-		case B_Start: break;
-		case off: tmp_blink = 0x00; break;
-		case B3: tmp_blink = 0x10; break;
-		default: break;
-	}
-}
-
-void speaker_Tick() {
-	switch (speak_state) {
-		case Start: speak_state = Quiet; break;
-		case Quiet: speak_state = (tmp_A == 0x04) ? Noise : Quiet; break;
-		case Noise: speak_state = Quiet; break;
-		default: break;
-	}
-	switch (speak_state) {
-		case Start: break;
-		case Quiet: set_PWM(0); break;
-		case Noise: set_PWM(261.62); break;
-		default: break;
-	}
+	return 0;
+	//--------End find GCD function ----------------------------------------------
 	
 }
 
-void output_Tick() {
-	switch (out_state) {
-		case Start: out_state = write; break;
-		case write: break;
-		default: break;
+typedef struct _task {
+	//--------Task scheduler data structure---------------------------------------
+	// Struct for Tasks represent a running process in our simple real-time operating system.
+	/*Tasks should have members that include: state, period,
+		a measurement of elapsed time, and a function pointer.*/
+	signed char state; //Task's current state
+	unsigned long int period; //Task period
+	unsigned long int elapsedTime; //Time elapsed since last task tick
+	int (*TickFct)(int); //Task tick function
+	//--------End Task scheduler data structure-----------------------------------
+} task;
+
+unsigned char SM1_out;
+unsigned short numGet;
+
+//Enumeration of states.
+enum SM1_States { SM1_Start, SM1_get};
+enum SM2_States { SM2_Start, SM2_Display };
+
+
+int SMTick1(int state) {
+	switch (state) {
+		case SM1_Start: state = SM1_get; break;
+		case SM1_get: break;
+		default: state = SM1_Start; break;
 	}
-	switch (out_state) {
-		case Start: break;
-		case write: 
-			PORTB = tmp_blink | tmp_three; 
+	switch (state) {
+		case SM1_Start: break;
+		case SM1_get:
+			numGet = GetKeypadKey();
+			switch (numGet) {
+				case '\0': SM1_out = 0x1F; break; // All 5 LEDs on
+				case '1': SM1_out = 0x01; break; // hex equivalent
+				case '2': SM1_out = 0x02; break;
+				case '3': SM1_out = 0x03; break;
+				case '4': SM1_out = 0x04; break;
+				case '5': SM1_out = 0x05; break;
+				case '6': SM1_out = 0x06; break;
+				case '7': SM1_out = 0x07; break;
+				case '8': SM1_out = 0x08; break;
+				case '9': SM1_out = 0x09; break;
+				case 'A': SM1_out = 0x0A; break; //ASCII 65
+				case 'B': SM1_out = 0x0B; break; //ASCII 66
+				case 'C': SM1_out = 0x0C; break; //ASCII 67
+				case 'D': SM1_out = 0x0D; break; //ASCII 68
+				case '*': SM1_out = 0x0E; break; //ASCII 42
+				case '0': SM1_out = 0x00; break;
+				case '#': SM1_out = 0x0F; break; //ASCII 35
+				default: SM1_out = 0x1B; break; // Should never occur. Middle LED off.
+			}
+			break;
+	}
+	return state;
+}
+int SMTick2(int state) {
+	switch(state) {
+		case SM2_Start:
+			state = SM2_Display;
+			break;
+		case SM2_Display: break;
+		default: state = SM2_Start; break;
+	}
+	switch (state) {
+		case SM2_Start: break;
+		case SM2_Display:
+			PORTB = SM1_out;
 			break;
 		default: break;
 	}
+	return state;
 }
 
-int main(void)
-{
-	DDRA = 0x00; PORTA = 0xFF;
-	DDRB = 0xFF; PORTB = 0x00;
-	unsigned long TL_elapsedTime = 0;
-	unsigned long BL_elapsedTime = 0;
-	unsigned long S_elapsedTime = 0;
-	const unsigned long timerPeriod = 2;
-	PWM_on();
-    TimerSet(timerPeriod);
+int main() {
+
+	DDRB = 0xFF; PORTB = 0x00; // PORTB set to output, outputs init 0s
+	DDRC = 0xF0; PORTC = 0x0F; // PC7..4 outputs init 0s, PC3..0 inputs init 1s
+	// . . . etc
+
+	// Period for the tasks
+	unsigned long int SMTick1_calc = 50;
+	unsigned long int SMTick2_calc = 50;
+
+	//Calculating GCD
+	unsigned long int tmpGCD = 1;
+	tmpGCD = findGCD(SMTick1_calc, SMTick2_calc);
+
+	//Greatest common divisor for all tasks or smallest time unit for tasks.
+	unsigned long int GCD = tmpGCD;
+
+	//Recalculate GCD periods for scheduler
+	unsigned long int SMTick1_period = SMTick1_calc/GCD;
+	unsigned long int SMTick2_period = SMTick2_calc/GCD;
+
+
+	//Declare an array of tasks
+	static task task1, task2;
+	task *tasks[] = { &task1, &task2 };
+	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
+
+	// Task 1
+	task1.state = -1;//Task initial state.
+	task1.period = SMTick1_period;//Task Period.
+	task1.elapsedTime = SMTick1_period;//Task current elapsed time.
+	task1.TickFct = &SMTick1;//Function pointer for the tick.
+
+	// Task 2
+	task2.state = -1;//Task initial state.
+	task2.period = SMTick2_period;//Task Period.
+	task2.elapsedTime = SMTick2_period;//Task current elapsed time.
+	task2.TickFct = &SMTick2;//Function pointer for the tick
+
+	// Set the timer and turn it on
+	TimerSet(GCD);
 	TimerOn();
-	three_state = T_Start;
-	blink_state = B_Start;
-	speak_state = S_Start;
-    while (1) 
-    {
-		tmp_A = ~PINA & 0x04;
-		if (TL_elapsedTime >= 300) {
-			threeLED_Tick();
-			TL_elapsedTime = 0;
+	
+	unsigned short i; // Scheduler for-loop iterator
+	while(1) {
+		numGet = GetKeypadKey();
+		// Scheduler code
+		for ( i = 0; i < numTasks; i++ ) {
+			// Task is ready to tick
+			if ( tasks[i]->elapsedTime == tasks[i]->period ) {
+				// Setting next state for task
+				tasks[i]->state = tasks[i]->TickFct(tasks[i]->state);
+				// Reset the elapsed time for next tick.
+				tasks[i]->elapsedTime = 0;
+			}
+			tasks[i]->elapsedTime += 1;
 		}
-		if (BL_elapsedTime >= 1000) {
-			blinkLED_Tick();
-			BL_elapsedTime = 0;
-		}
-		if (S_elapsedTime >= 2) {
-			speaker_Tick();
-			S_elapsedTime = 0;
-		}
-		output_Tick();
-		
-		while (!TimerFlag) {}
+		while(!TimerFlag);
 		TimerFlag = 0;
-		
-		BL_elapsedTime += timerPeriod;
-		TL_elapsedTime += timerPeriod;
-		S_elapsedTime += timerPeriod;
-    }
+	}
+
+	// Error: Program should not exit!
+	return 0;
 }
