@@ -8,7 +8,7 @@
 volatile unsigned char TimerFlag = 0;
 unsigned long _avr_timer_M = 1;
 unsigned long _avr_timer_cntcurr = 0;
-
+/*
 void TimerOn() {
     TCCR1B = 0x0B;
     OCR1A = 125;
@@ -33,7 +33,7 @@ void TimerSet(unsigned long M) {
     _avr_timer_M = M;
     _avr_timer_cntcurr = _avr_timer_M;
 }
-
+*/
 void ADC_init() {
     ADCSRA |= (1 << ADEN) | (1 << ADSC) | (1 << ADATE);
 }
